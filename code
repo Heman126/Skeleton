@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb  7 04:46:15 2018
+
+@author: hermanmak
+"""
+
+import pandas as pd
+import vpython as vp
+import math
+
+while True:
+    a = input('What is the name of your file? ')
+
+    #Read data
+    df = pd.read_csv(a, delimiter = ',', names = ['Time', 'Rot_y', 'Rot_x', 'Rot_z', 'Acc_x', 'Acc_y', 'Acc_z'])
+    dt = .01
+    
+    #Rotation from established axis
+    dRot_x = df.loc[1,'Rot_x']
+    dRot_y = df.loc[1,'Rot_y']
+    dRot_z = df.loc[1,'Rot_z']
+    df.loc[:,'Rot_x'] = df.loc[:,'Rot_x'] - dRot_x
+    df.loc[:,'Rot_y'] = df.loc[:,'Rot_y'] - dRot_y
+    df.loc[:,'Rot_z'] = df.loc[:,'Rot_z'] - dRot_z
+    
+    #Find real acceleration with respect to master coordinate system
+    for j in range (0, len(df)):
+        b = math.cos(df.loc[j,'Rot_x'])
+        c = math.cos(df.loc[j,'Rot_y'])
+        d = math.cos(df.loc[j,'Rot_z'])
+        e = math.sin(df.loc[j,'Rot_x'])
+        f = math.sin(df.loc[j,'Rot_y'])
+        g = math.sin(df.loc[j,'Rot_z'])
+        if df.loc[j, 'Acc_x'] > 3:
+            df.loc[j,'Acc_x'] = 3
+        if df.loc[j, 'Acc_y'] < -3:
+            df.loc[j,'Acc_y'] = -3
+        if df.loc[j, 'Acc_y'] > 3:
+            df.loc[j,'Acc_y'] = 3
+        if df.loc[j, 'Acc_y'] < -3:
+            df.loc[j,'Acc_y'] = -3
+        if df.loc[j, 'Acc_z'] > 3:
+            df.loc[j,'Acc_z'] = 3
+        if df.loc[j, 'Acc_z'] < -3:
+            df.loc[j,'Acc_z'] = -3
+        df.loc[j, 'AccR_x'] = -9.8*(df.loc[j,'Acc_x']*c*d+df.loc[j,'Acc_y']*(e*f*d-b*g)+df.loc[j,'Acc_z']*(e*g+b*f*d))
+        df.loc[j, 'AccR_y'] = -9.8*(df.loc[j,'Acc_x']*c*g+df.loc[j,'Acc_y']*(b*d+e*f*g)+df.loc[j,'Acc_z']*(b*f*g-e*d))
+        df.loc[j, 'AccR_z'] = -9.8*(-df.loc[j,'Acc_x']*f+df.loc[j,'Acc_y']*e*c+df.loc[j,'Acc_z']*b*c)
+        
+    #Calculate velocity iteratively
+    df.loc[0,'Vel_x'] = 0
+    df.loc[0,'Vel_y'] = 0
+    df.loc[0,'Vel_z'] = 0
+    for i in range (1, len(df)):
+        df.loc[i,'Vel_x'] = df.loc[i,'AccR_x']*dt + df.loc[i-1,'Vel_x']
+        df.loc[i,'Vel_y'] = df.loc[i,'AccR_y']*dt + df.loc[i-1,'Vel_y']
+        df.loc[i,'Vel_z'] = df.loc[i,'AccR_z']*dt + df.loc[i-1,'Vel_z']
+
+    #Offset correction velocity
+    df.loc[:, 'Vel_y'] = -(df.loc[:, 'Vel_y']-(df.loc[:, 'Time']*(df.loc[len(df)-1,'Vel_y']/df.loc[len(df)-1, 'Time'])))
+    
+    #Offset for hmm.csv
+    #df.loc[:, 'Vel_x'] = (df.loc[:, 'Vel_x']-(df.loc[:, 'Time']*(df.loc[len(df)-1,'Vel_x']/df.loc[len(df)-1, 'Time'])))
+    #df.loc[:, 'Vel_z'] = (df.loc[:, 'Vel_z']-(df.loc[:, 'Time']*(df.loc[len(df)-1,'Vel_z']/df.loc[len(df)-1, 'Time'])))
+    
+    #Speed calculation
+    for n in range (0, len(df)):
+        df.loc[n,'Vel'] = math.sqrt((df.loc[n,'Vel_x']**2)+(df.loc[n,'Vel_y']**2)+(df.loc[n,'Vel_z']**2))
+    
+    #Calculate position iteratively
+    df.loc[0,'Pos_x'] = 0
+    df.loc[0,'Pos_y'] = 0
+    df.loc[0,'Pos_z'] = 0
+    df.loc[0,'Mag_Pos'] = 0
+    for k in range (1, len(df)):
+        df.loc[k,'Pos_x'] = df.loc[k,'Vel_x']*dt + df.loc[k-1,'Pos_x']
+        df.loc[k,'Pos_y'] = df.loc[k,'Vel_y']*dt + df.loc[k-1,'Pos_y']
+        df.loc[k,'Pos_z'] = df.loc[k,'Vel_z']*dt + df.loc[k-1,'Pos_z']
+        df.loc[k,'Mag_Pos'] = math.sqrt((df.loc[k,'Pos_x']**2)+(df.loc[k,'Pos_y']**2)+(df.loc[k,'Pos_z']**2))
+    
+    
+    
+    #Energy calculation
+    #With mass of human plus sled
+    df.loc[:, 'KE'] = (df.loc[:, 'Vel']**2)*0.5*95
+    df.loc[:, 'PE'] = 95*9.8*df.loc[:, 'Pos_z']
+    df.loc[:, 'Drag'] = 0.5*1.2*0.14*0.45*(df.loc[:, 'Vel']**2)
+    for m in range(1,len(df)):
+        df.loc[m, 'Work_Air'] = abs(df.loc[m, 'Drag']*(df.loc[m,'Mag_Pos']-df.loc[m-1,'Mag_Pos']))
+
+    #Print plot and table with acceleration, velocity, position, and kinetic energy
+    del df['Rot_x'], df['Rot_y'], df['Rot_z'], df['Acc_x'], df['Acc_y'], df['Acc_z']
+    print(df)
+    del df['Vel_x'], df['Vel_y'], df['Vel_z']
+    df.plot(subplots=True, x='Time', figsize=(10,30))
+    
+    #Print Max Speed
+    print('The person\'s maximum speed is around', round(df['Vel'].max(),2), 'm/s.')
+
+    #Animation
+    person = vp.sphere(make_trail=True, color = vp.color.yellow)
+    s = vp.vector(0,0,0)
+
+    for m in range (0, len(df)):
+        vp.rate(1/dt)
+        s = vp.vector(df.loc[m,'Pos_x'],df.loc[m,'Pos_z'],df.loc[m,'Pos_y'])
+        person.pos = s
+    
+    
+    #Rerun code iff user returns 'y'.
+    re = input('Do you wish to repeat the calculation for another file? [y/n] ')
+    if re != 'y':
+        #Delete trail after user answers
+        person.visible = False
+        person.clear_trail()
+        del person
+        break
+    
+    #Delete trail when user answers 'y'
+    person.visible = False
+    person.clear_trail()
+    del person
