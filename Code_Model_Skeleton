@@ -79,9 +79,7 @@ while True:
         df.loc[k,'Pos_y'] = df.loc[k,'Vel_y']*dt + df.loc[k-1,'Pos_y']
         df.loc[k,'Pos_z'] = df.loc[k,'Vel_z']*dt + df.loc[k-1,'Pos_z']
         df.loc[k,'Mag_Pos'] = math.sqrt((df.loc[k,'Pos_x']**2)+(df.loc[k,'Pos_y']**2)+(df.loc[k,'Pos_z']**2))
-    
-    
-    
+        
     #Energy calculation
     #With mass of human plus sled
     df.loc[:, 'KE'] = (df.loc[:, 'Vel']**2)*0.5*95
@@ -108,17 +106,13 @@ while True:
         s = vp.vector(df.loc[m,'Pos_x'],df.loc[m,'Pos_z'],df.loc[m,'Pos_y'])
         person.pos = s
     
-    
     #Rerun code iff user returns 'y'.
     re = input('Do you wish to repeat the calculation for another file? [y/n] ')
-    if re != 'y':
-        #Delete trail after user answers
-        person.visible = False
-        person.clear_trail()
-        del person
-        break
     
-    #Delete trail when user answers 'y'
+    #Delete trail after user answers
     person.visible = False
     person.clear_trail()
     del person
+    
+    if re != 'y':
+        break
