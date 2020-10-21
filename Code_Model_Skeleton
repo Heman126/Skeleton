@@ -81,14 +81,15 @@ while True:
         df.loc[k,'Mag_Pos'] = math.sqrt((df.loc[k,'Pos_x']**2)+(df.loc[k,'Pos_y']**2)+(df.loc[k,'Pos_z']**2))
         
     #Energy calculation
-    #With mass of human plus sled
+    #Using mass of human plus sled
     df.loc[:, 'KE'] = (df.loc[:, 'Vel']**2)*0.5*95
     df.loc[:, 'PE'] = 95*9.8*df.loc[:, 'Pos_z']
+    #Drag calculation using C_D = 0.45 and Area = 0.14 m^2 (for a skeleton athlete from the Royal Academy of Engineering's document "Athlete or Machine?")
     df.loc[:, 'Drag'] = 0.5*1.2*0.14*0.45*(df.loc[:, 'Vel']**2)
     for m in range(1,len(df)):
         df.loc[m, 'Work_Air'] = abs(df.loc[m, 'Drag']*(df.loc[m,'Mag_Pos']-df.loc[m-1,'Mag_Pos']))
 
-    #Print plot and table with acceleration, velocity, position, and kinetic energy
+    #Print plot and table with acceleration, velocity, position, kinetic/potential energy, and aerodynamic drag/work.
     del df['Rot_x'], df['Rot_y'], df['Rot_z'], df['Acc_x'], df['Acc_y'], df['Acc_z']
     print(df)
     del df['Vel_x'], df['Vel_y'], df['Vel_z']
