@@ -106,7 +106,7 @@ while True:
         s = vp.vector(df.loc[m,'Pos_x'],df.loc[m,'Pos_z'],df.loc[m,'Pos_y'])
         person.pos = s
     
-    #Rerun code iff user returns 'y'.
+    #Rerun code if user returns 'y'.
     re = input('Do you wish to repeat the calculation for another file? [y/n] ')
     
     #Delete trail after user answers
